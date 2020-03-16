@@ -57,7 +57,6 @@ class BusStopRequest():
                 logger.error("Unknown google action call")
                 raise APIException()
         except Exception as error:
-            logger.error("There was an error processing the request. Error: {}".format(error.args[1]))
             raise APIException
         except APIException:
             raise falcon.HTTP_500
