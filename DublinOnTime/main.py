@@ -2,10 +2,14 @@ from enum import Enum, IntEnum
 from pydialogflow_fulfillment import DialogflowResponse, DialogflowRequest, SimpleResponse
 
 import falcon
+import logging
 import json
 import pandas as pandas
 import requests
 
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.DEBUG)
 api = bus_app = falcon.API()
 ROUTE = '/busstop'
 
@@ -39,16 +43,21 @@ class BusStopRequest():
 
             if dialogflow_request.get_action() == 'call_busstop_api':
                 bus_stop = int(dialogflow_request.get_parameters().get('stop'))
+                logger.info("Received request for stop {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
                 api_response = BusStopResponse(bus_times_response_state).response_message
                 dialogflow_response = DialogflowResponse()
                 dialogflow_response.add(SimpleResponse(api_response, api_response))
                 dialogflow_response.expect_user_response = False
-                resp.media = dialogflow_response.get_final_response()
+                resp.body = dialogflow_response.get_final_response()
+                resp.content_type = falcon.MEDIA_JSON
+                resp.status = falcon.HTTP_200
             else:
+                logger.error("Unknown google action call")
                 raise APIException()
-        except Exception:
+        except Exception as error:
+            logger.error("There was an error processing the request. Error: {}".format(error.args[1]))
             raise APIException
         except APIException:
             raise falcon.HTTP_500
