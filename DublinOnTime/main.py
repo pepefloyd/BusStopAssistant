@@ -60,7 +60,7 @@ class BusStopRequest():
     def create_dialogflow_response(self, response):
 
         dialogflow_response = DialogflowResponse()
-        dialogflow_response.expect_user_response = False
+        dialogflow_response.expect_user_response = True
         dialogflow_response.add(SimpleResponse(response, response))
         return dialogflow_response.get_final_response()
 
