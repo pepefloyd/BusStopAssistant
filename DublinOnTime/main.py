@@ -35,7 +35,7 @@ class BusStopRequest():
     def on_post(self, req, resp):
         """Handles POST requests"""
         try:
-
+            logger.info('Received a new request')
             json_request = json.load(req.bounded_stream)
             dialogflow_request = DialogflowRequest(json.dumps(json_request))
 
@@ -45,7 +45,8 @@ class BusStopRequest():
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
                 api_response = BusStopResponse(bus_times_response_state).response_message
-                resp.body = self.create_dialogflow_response(api_response)
+                logger.info('Setting response to {}'.format(api_response))
+                resp.body = self.create_dialogflow_response(api_response,True)
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
             else:
@@ -57,11 +58,11 @@ class BusStopRequest():
             resp.content_type = falcon.MEDIA_JSON
             resp.status = falcon.HTTP_200
 
-    def create_dialogflow_response(self, response):
+    def create_dialogflow_response(self, response, expect_user_response=False):
 
         dialogflow_response = DialogflowResponse()
-        dialogflow_response.expect_user_response = True
         dialogflow_response.add(SimpleResponse(response, response))
+        dialogflow_response.expect_user_response = expect_user_response
         return dialogflow_response.get_final_response()
 
     def get_rtpi_site(self):
