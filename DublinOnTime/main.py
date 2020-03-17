@@ -15,10 +15,8 @@ ROUTE = '/busstop'
 
 
 class APIException(Exception):
+    pass
 
-    def __init__(self, expression, message):
-        self.expression = expression
-        self.message = 'I was unable find this information'
 
 class Availability(Enum):
     """Represents the state of the bus availability"""
@@ -27,7 +25,7 @@ class Availability(Enum):
     NO_BUSES = 3
 
 
-class Contants(IntEnum):
+class Constants(IntEnum):
     """Limits in this module"""
     MAX_BUSES = 5
 
@@ -47,19 +45,24 @@ class BusStopRequest():
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
                 api_response = BusStopResponse(bus_times_response_state).response_message
-                dialogflow_response = DialogflowResponse()
-                dialogflow_response.add(SimpleResponse(api_response, api_response))
-                dialogflow_response.expect_user_response = False
-                resp.body = dialogflow_response.get_final_response()
+                resp.body = self.create_dialogflow_response(api_response)
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
             else:
                 logger.error("Unknown google action call")
                 raise APIException()
         except Exception as error:
-            raise APIException
-        except APIException:
-            raise falcon.HTTP_500
+            logger.error(str(error))
+            resp.body = self.create_dialogflow_response("Sorry, I could not find this information.")
+            resp.content_type = falcon.MEDIA_JSON
+            resp.status = falcon.HTTP_200
+
+    def create_dialogflow_response(self, response):
+
+        dialogflow_response = DialogflowResponse()
+        dialogflow_response.expect_user_response = False
+        dialogflow_response.add(SimpleResponse(response, response))
+        return dialogflow_response.get_final_response()
 
     def get_rtpi_site(self):
         """ Get the actual RTPI site"""
@@ -120,8 +123,8 @@ class BusStopResponse():
         try:
             if self.bus_response.Service.size > 1:
                 self.availability = Availability.MANY_BUSES
-                if self.bus_response.Service.size > Contants.MAX_BUSES:
-                    self.bus_response = self.bus_response.head(Contants.MAX_BUSES)
+                if self.bus_response.Service.size > Constants.MAX_BUSES:
+                    self.bus_response = self.bus_response.head(Constants.MAX_BUSES)
             elif self.bus_response.Service.size == 1:
                 self.availability = Availability.ONE_BUS
             else:
