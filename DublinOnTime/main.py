@@ -54,6 +54,7 @@ class BusStopRequest():
                 raise APIException()
         except Exception as error:
             logger.error(str(error))
+            logger.error(req.bounded_stream)
             resp.body = self.create_dialogflow_response("Sorry, I could not find this information.")
             resp.content_type = falcon.MEDIA_JSON
             resp.status = falcon.HTTP_200
