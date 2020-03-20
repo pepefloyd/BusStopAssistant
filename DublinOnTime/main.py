@@ -40,7 +40,7 @@ class BusStopRequest():
             dlg_flow_req = DialogflowRequest(json.dumps(json_request))
             stop_param = dlg_flow_req.get_parameters().get('stop') if 'stop' in dlg_flow_req.get_parameters() else ''
             logger.info('stop parameter is {}'.format(stop_param))
-            if dlg_flow_req.get_action() == 'call_busstop_api' and len(stop_param) > 0:
+            if dlg_flow_req.get_action() == 'call_busstop_api' and stop_param:
                 bus_stop = int(stop_param)
                 logger.info("Received request for stop {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
