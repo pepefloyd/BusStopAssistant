@@ -38,28 +38,28 @@ class BusStopRequest():
             logger.info('Received a new request')
             json_request = json.load(req.bounded_stream)
             dialogflow_request = DialogflowRequest(json.dumps(json_request))
-
-            if dialogflow_request.get_action() == 'call_busstop_api':
-                bus_stop = int(dialogflow_request.get_parameters().get('stop'))
+            stop_param = dialogflow_request.get_parameters().get('stop')
+            if dialogflow_request.get_action() == 'call_busstop_api' and len(stop_param) > 0:
+                bus_stop = int(stop_param)
                 logger.info("Received request for stop {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
                 api_response = BusStopResponse(bus_times_response_state).response_message
                 logger.info('Setting response to {}'.format(api_response))
-                resp.body = self.create_dialogflow_response(api_response,True)
+                resp.body = self.create_dialogflow_response(api_response)
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
             else:
-                logger.error("Unknown google action call")
+                logger.error("Unknown request. Request {}".format(str(json.load(req.bounded_stream))))
                 raise APIException()
         except Exception as error:
             logger.error(str(error))
-            logger.error(req.bounded_stream)
-            resp.body = self.create_dialogflow_response("Sorry, I could not find this information.")
+            resp.body = self.create_dialogflow_response("Sorry, I could not find this information."
+                                                        " Can you try again?", True)
             resp.content_type = falcon.MEDIA_JSON
             resp.status = falcon.HTTP_200
 
-    def create_dialogflow_response(self, response, expect_user_response=False):
+    def create_dialogflow_response(self, response, expect_user_response= False):
 
         dialogflow_response = DialogflowResponse()
         dialogflow_response.add(SimpleResponse(response, response))
