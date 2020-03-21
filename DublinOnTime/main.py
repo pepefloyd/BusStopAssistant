@@ -51,7 +51,7 @@ class BusStopRequest():
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
             elif dlg_flow_req.get_action() == 'call_busstop_api':
-                logger.info('ask for bus stop')
+                logger.info('Action is: ask for bus stop')
                 resp.body = self.create_dialogflow_response("What is the stop number?", True)
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
@@ -59,8 +59,7 @@ class BusStopRequest():
                 raise APIException()
         except Exception as error:
             logger.error(str(error))
-            resp.body = self.create_dialogflow_response("Sorry, I could not find this information."
-                                                        " Can you try again?", True)
+            resp.body = self.create_dialogflow_response("Sorry, I could not find this information.")
             resp.content_type = falcon.MEDIA_JSON
             resp.status = falcon.HTTP_200
 
