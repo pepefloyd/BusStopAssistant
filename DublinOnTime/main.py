@@ -50,8 +50,12 @@ class BusStopRequest():
                 resp.body = self.create_dialogflow_response(api_response)
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
+            elif dlg_flow_req.get_action() == 'call_busstop_api':
+                logger.info('ask for bus stop')
+                resp.body = self.create_dialogflow_response("What is the stop number?", True)
+                resp.content_type = falcon.MEDIA_JSON
+                resp.status = falcon.HTTP_200
             else:
-                logger.error("Unknown request. Request {}".format(str(json.load(req.bounded_stream))))
                 raise APIException()
         except Exception as error:
             logger.error(str(error))
