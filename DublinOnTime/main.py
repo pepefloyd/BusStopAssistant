@@ -1,12 +1,12 @@
+import json
+import logging
+import random
 from enum import Enum, IntEnum
-from pydialogflow_fulfillment import DialogflowResponse, DialogflowRequest, SimpleResponse
 
 import falcon
-import logging
-import json
 import pandas as pandas
-import random
 import requests
+from pydialogflow_fulfillment import DialogflowResponse, DialogflowRequest, SimpleResponse
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -33,15 +33,17 @@ class Constants(IntEnum):
 
 class BusStopRequest():
     """Represents a request to this API"""
+
     def on_post(self, req, resp):
         """Handles POST requests"""
         try:
             logger.info('Received a new request')
             json_request = json.load(req.bounded_stream)
             dlg_flow_req = DialogflowRequest(json.dumps(json_request))
-            stop_param = '' if 'stop' not in dlg_flow_req.get_parameters() else dlg_flow_req.get_parameters().get('stop')
-            logger.info('stop parameter is {}'.format(stop_param))
+            stop_param = '' if 'stop' not in dlg_flow_req.get_parameters() \
+                else dlg_flow_req.get_parameters().get('stop')
             if dlg_flow_req.get_action() == 'call_busstop_api' and stop_param:
+                logger.info('stop parameter is {}'.format(stop_param))
                 bus_stop = int(stop_param)
                 logger.info("Received request for stop {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
@@ -64,19 +66,20 @@ class BusStopRequest():
             resp.content_type = falcon.MEDIA_JSON
             resp.status = falcon.HTTP_200
 
-    def create_dialogflow_response(self, response, expect_user_response=False):
+    def create_dialogflow_response(self,response, expect_user_response=False):
 
         dialogflow_response = DialogflowResponse()
         dialogflow_response.expect_user_response = expect_user_response
         dialogflow_response.add(SimpleResponse(response, response))
         return dialogflow_response.get_final_response()
 
-    def get_rtpi_site(self):
-        """ Get the actual RTPI site"""
-        return 'http://rtpi.ie/Text/WebDisplay.aspx'
-
     def query_bus_stop(self, stop_number):
         return self.send_request(self.get_rtpi_site() + '?stopRef=' + str(stop_number))
+
+    @staticmethod
+    def get_rtpi_site():
+        """ Get the actual RTPI site"""
+        return 'http://rtpi.ie/Text/WebDisplay.aspx'
 
     @staticmethod
     def send_request(full_query):
@@ -86,8 +89,7 @@ class BusStopRequest():
         :param full_query: site + query string with bus stop on it
         :return:
         """
-        req = requests.get(full_query)
-        return req
+        return requests.get(full_query)
 
     @staticmethod
     def deserialize_response(raw_response):
@@ -111,15 +113,15 @@ class BusStopResponse():
                  'Hey there, please tell me the stop number',
                  'Hi, please tell me the bust stop number']
 
-    error_messages = ['Sorry, I could not find this information. Try later.',
-                      'It was not possible to get this information. Try again later']
+    error_messages = ['Sorry, I could not find this information. Please try later.',
+                      'It was not possible to get this information. Please try again later']
 
     def __init__(self, bus_response):
 
         self.bus_response = bus_response
         self.availability = None
-        self.prepare_response()
         self.response_message = ''
+        self.set_availability()
         self.set_message()
 
     @classmethod
@@ -134,18 +136,17 @@ class BusStopResponse():
         """Sets the correct message"""
 
         if self.availability == Availability.MANY_BUSES:
-            self.response_message = 'These buses are coming soon. '
+            self.response_message = 'These buses are coming to this stop. '
         elif self.availability == Availability.ONE_BUS:
             self.response_message = 'One bus is coming. '
         else:
-            self.response_message = 'I could not find any buses arriving soon.'
+            self.response_message = 'I could not find any buses arriving at this bus stop.'
 
         if self.availability == Availability.MANY_BUSES or self.availability == Availability.ONE_BUS:
-
             bus_details_message = ', '.join(self.get_incoming_buses_detailed_message(self.bus_response))
             self.response_message = self.response_message + bus_details_message
 
-    def prepare_response(self):
+    def set_availability(self):
         try:
             if self.bus_response.Service.size > 1:
                 self.availability = Availability.MANY_BUSES
@@ -155,21 +156,20 @@ class BusStopResponse():
                 self.availability = Availability.ONE_BUS
             else:
                 self.availability = Availability.NO_BUSES
-        except Exception as error:
+        except Exception:
             self.availability = Availability.NO_BUSES
 
     @staticmethod
     def get_incoming_buses_detailed_message(bus_response):
+        """ Gets a user friendly message with bus service information"""
 
-        message = ''
-
-        def isTime(time_value):
+        def is_time(time_value):
             """
             Check if the reply had a time-like value such as 22:05
             """
             return ":" in str(time_value)
 
-        def isDue(time_value):
+        def is_due(time_value):
             """
             check if we value is 'due'
             """
@@ -180,19 +180,23 @@ class BusStopResponse():
             Prepare a user-friendly message
             """
             message = service_time[0] + ' '
-            if isDue(service_time[1]):
+            if is_due(service_time[1]):
                 message += ' is due'
-            elif isTime(service_time[1]):
+            elif is_time(service_time[1]):
                 # 22:05 changes to '22 05'
                 message += ' is coming at ' + service_time[1].replace(':', ' ')
             else:
                 message += service_time[1].replace('Mins', 'minutes')
             return message
 
-        r = bus_response
-        service_time_message = [prepare_message((service, time)) for service, time in zip(r['Service'], r['Time'])]
+        resp = bus_response
+        service_time_message = [prepare_message((service, time)) for service, time in zip(resp['Service'], resp['Time'])]
         return service_time_message
 
 
-bus_app.add_route(ROUTE, BusStopRequest())
+def add_api_endpoints(app):
+    """ Add the available endpoints for this API"""
+    app.add_route(ROUTE, BusStopRequest())
 
+
+add_api_endpoints(bus_app)
