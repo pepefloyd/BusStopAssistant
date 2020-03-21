@@ -5,6 +5,7 @@ import falcon
 import logging
 import json
 import pandas as pandas
+import random
 import requests
 
 logger = logging.getLogger(__name__)
@@ -52,22 +53,22 @@ class BusStopRequest():
                 resp.status = falcon.HTTP_200
             elif dlg_flow_req.get_action() == 'call_busstop_api':
                 logger.info('Action is: ask for bus stop')
-                resp.body = self.create_dialogflow_response("What is the stop number?", True)
+                resp.body = self.create_dialogflow_response(BusStopResponse.get_greeting_with_question(), True)
                 resp.content_type = falcon.MEDIA_JSON
                 resp.status = falcon.HTTP_200
             else:
                 raise APIException()
         except Exception as error:
             logger.error(str(error))
-            resp.body = self.create_dialogflow_response("Sorry, I could not find this information.")
+            resp.body = self.create_dialogflow_response(BusStopResponse.get_error_message())
             resp.content_type = falcon.MEDIA_JSON
             resp.status = falcon.HTTP_200
 
-    def create_dialogflow_response(self, response, expect_user_response= False):
+    def create_dialogflow_response(self, response, expect_user_response=False):
 
         dialogflow_response = DialogflowResponse()
-        dialogflow_response.add(SimpleResponse(response, response))
         dialogflow_response.expect_user_response = expect_user_response
+        dialogflow_response.add(SimpleResponse(response, response))
         return dialogflow_response.get_final_response()
 
     def get_rtpi_site(self):
@@ -104,15 +105,32 @@ class BusStopResponse():
     """
     Represents a response to the client from this API
     """
+    greetings = ['Welcome to Dublin on time. Please tell me the '
+                 'bus stop number you would like me to check for you',
+                 'Hello!, please tell me the stop number you would like me to verify',
+                 'Hey there, please tell me the stop number',
+                 'Hi, please tell me the bust stop number']
+
+    error_messages = ['Sorry, I could not find this information. Try later.',
+                      'It was not possible to get this information. Try again later']
+
     def __init__(self, bus_response):
 
         self.bus_response = bus_response
         self.availability = None
         self.prepare_response()
         self.response_message = ''
-        self.get_message()
+        self.set_message()
 
-    def get_message(self):
+    @classmethod
+    def get_greeting_with_question(cls):
+        return random.choice(cls.greetings)
+
+    @classmethod
+    def get_error_message(cls):
+        return random.choice(cls.error_messages)
+
+    def set_message(self):
         """Sets the correct message"""
 
         if self.availability == Availability.MANY_BUSES:
@@ -121,9 +139,11 @@ class BusStopResponse():
             self.response_message = 'One bus is coming. '
         else:
             self.response_message = 'I could not find any buses arriving soon.'
-            return
-        bus_details_message = ', '.join(self.get_incoming_buses_detailed_message(self.bus_response))
-        self.response_message = self.response_message + bus_details_message
+
+        if self.availability == Availability.MANY_BUSES or self.availability == Availability.ONE_BUS:
+
+            bus_details_message = ', '.join(self.get_incoming_buses_detailed_message(self.bus_response))
+            self.response_message = self.response_message + bus_details_message
 
     def prepare_response(self):
         try:
