@@ -3,6 +3,8 @@ import logging
 import random
 from enum import Enum, IntEnum
 
+from bs4 import BeautifulSoup
+
 import falcon
 import pandas as pandas
 import requests
@@ -48,6 +50,7 @@ class BusStopRequest():
                     # This converts '70 to 94' to '7294'
                     index = stop_param.index(' to ')
                     stop_param = stop_param[:index - 1] + '2' + stop_param[index + 4:]
+                stop_param = stop_param.replace(' ', '')
                 bus_stop = int(stop_param.split('.', 1)[0])
                 logger.info("Received request for stop {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
@@ -124,6 +127,7 @@ class BusStopResponse():
 
     many_buses_message = ['There buses are coming ', 'The following buses are coming  ',
                           'These are the buses coming to this stop ']
+
     def __init__(self, bus_response):
 
         self.bus_response = bus_response
