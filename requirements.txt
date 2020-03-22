@@ -1,5 +1,5 @@
 html5lib==1.0b8
-beautifulsoup4==4.4.1
+beautifulsoup4==4.6.0
 certifi==2019.11.28
 chardet==3.0.4
 falcon==2.0.0

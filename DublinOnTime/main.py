@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.DEBUG)
 api = bus_app = falcon.API()
-ROUTE = '/busstop'
+bus_stop_route = '/busstop'
 
 
 class APIException(Exception):
@@ -110,12 +110,16 @@ class BusStopResponse():
     greetings = ['Welcome to Dublin on time. Please tell me the '
                  'bus stop number you would like me to check for you',
                  'Hello!, please tell me the stop number you would like me to verify',
-                 'Hey there, please tell me the stop number',
-                 'Hi, please tell me the bust stop number']
+                 'Hey there, please tell me the stop number you need me to check',
+                 'Hi, please tell me the stop number']
 
     error_messages = ['Sorry, I could not find this information. Please try later.',
-                      'It was not possible to get this information. Please try again later']
+                      'It was not possible to get this information. Please try again later',]
 
+    single_bus_message = ['One bus is coming.', 'There is one bus coming  ']
+
+    many_buses_message = ['There buses are coming ', 'The following buses are coming  ',
+                          'These are the buses coming to this stop']
     def __init__(self, bus_response):
 
         self.bus_response = bus_response
@@ -131,14 +135,21 @@ class BusStopResponse():
     @classmethod
     def get_error_message(cls):
         return random.choice(cls.error_messages)
+    @classmethod
+    def get_single_bus_message_initial_greeting(cls):
+        return random.choice(cls.single_bus_message)
+
+    @classmethod
+    def get_many_buses_initial_greeting(cls):
+        return random.choice(cls.many_buses_message)
 
     def set_message(self):
         """Sets the correct message"""
 
         if self.availability == Availability.MANY_BUSES:
-            self.response_message = 'These buses are coming to this stop. '
+            self.response_message = self.get_many_buses_initial_greeting()
         elif self.availability == Availability.ONE_BUS:
-            self.response_message = 'One bus is coming. '
+            self.response_message = self.get_single_bus_message_initial_greeting()
         else:
             self.response_message = 'I could not find any buses arriving at this bus stop.'
 
@@ -194,9 +205,9 @@ class BusStopResponse():
         return service_time_message
 
 
-def add_api_endpoints(app):
+def add_api_endpoints(endpoint):
     """ Add the available endpoints for this API"""
-    app.add_route(ROUTE, BusStopRequest())
+    bus_app.add_route(endpoint, BusStopRequest())
 
 
-add_api_endpoints(bus_app)
+add_api_endpoints(bus_stop_route)
