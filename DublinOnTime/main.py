@@ -44,7 +44,7 @@ class BusStopRequest():
                 else dlg_flow_req.get_parameters().get('stop')
             if dlg_flow_req.get_action() == 'call_busstop_api' and stop_param:
                 logger.info('stop parameter is {}'.format(stop_param))
-                bus_stop = int(stop_param)
+                bus_stop = int(stop_param.split('.', 1)[0])
                 logger.info("Received request for stop {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
