@@ -1,24 +1,30 @@
+""" Allows Google Assistant users to ask the assistant when is their bus coming to a particular bus stop.
+
+This module provides a web service using the falcon framework which receives  and responds to requests from
+Google's Dialogflow. The actual information is obtained by doing good old scrappin' of the RTPI.ie site
+
+Ireland, March 2020.
+"""
+
 import json
 import logging
 import random
 from enum import Enum, IntEnum
 
-from bs4 import BeautifulSoup
-
-import falcon
-import pandas as pandas
+from falcon import API, MEDIA_JSON, HTTP_200
+import pandas
 import requests
 from pydialogflow_fulfillment import DialogflowResponse, DialogflowRequest, SimpleResponse
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
-logger.setLevel(logging.DEBUG)
-api = bus_app = falcon.API()
-bus_stop_route = '/busstop'
+LOGGER = logging.getLogger(__name__)
+LOGGER.addHandler(logging.StreamHandler())
+LOGGER.setLevel(logging.DEBUG)
+BUS_SERVICE_API = BUS_APP = API()
+BUS_STOP_ROUTE = '/busstop'
 
 
 class APIException(Exception):
-    pass
+    """ Generic Exception for this API"""
 
 
 class Availability(Enum):
@@ -39,48 +45,51 @@ class BusStopRequest():
     def on_post(self, req, resp):
         """Handles POST requests"""
         try:
-            logger.info('Received a new request')
+            LOGGER.info('new request received')
             json_request = json.load(req.bounded_stream)
             dlg_flow_req = DialogflowRequest(json.dumps(json_request))
             stop_param = '' if 'stop' not in dlg_flow_req.get_parameters() \
                 else dlg_flow_req.get_parameters().get('stop')
             if dlg_flow_req.get_action() == 'call_busstop_api' and stop_param:
-                logger.info('stop parameter is {}'.format(stop_param))
+                LOGGER.info('stop parameter is {}'.format(stop_param))
                 if ' to ' in stop_param:
                     # This converts '70 to 94' to '7294'
                     index = stop_param.index(' to ')
                     stop_param = stop_param[:index - 1] + '2' + stop_param[index + 4:]
                 stop_param = stop_param.replace(' ', '')
                 bus_stop = int(stop_param.split('.', 1)[0])
-                logger.info("Received request for stop {}".format(bus_stop))
+                LOGGER.info("Resolved bus stop: {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
                 api_response = BusStopResponse(bus_times_response_state).response_message
-                logger.info('Setting response to {}'.format(api_response))
+                LOGGER.info('setting response to {}'.format(api_response))
                 resp.body = self.create_dialogflow_response(api_response)
-                resp.content_type = falcon.MEDIA_JSON
-                resp.status = falcon.HTTP_200
+                resp.content_type = MEDIA_JSON
+                resp.status = HTTP_200
             elif dlg_flow_req.get_action() == 'call_busstop_api':
-                logger.info('Action is: ask for bus stop')
-                resp.body = self.create_dialogflow_response(BusStopResponse.get_greeting_with_question(), True)
-                resp.content_type = falcon.MEDIA_JSON
-                resp.status = falcon.HTTP_200
+                LOGGER.info('bus stop request did no contain stop parameter')
+                resp.body = self.create_dialogflow_response(
+                    BusStopResponse.get_greeting_with_question(), True)
+                resp.content_type = MEDIA_JSON
+                resp.status = HTTP_200
             else:
                 raise APIException()
         except Exception as error:
-            logger.error(str(error))
+            LOGGER.error('There was an error processing this request')
+            LOGGER.error(str(error))
             resp.body = self.create_dialogflow_response(BusStopResponse.get_error_message())
-            resp.content_type = falcon.MEDIA_JSON
-            resp.status = falcon.HTTP_200
+            resp.content_type = MEDIA_JSON
+            resp.status = HTTP_200
 
-    def create_dialogflow_response(self,response, expect_user_response=False):
-
+    def create_dialogflow_response(self, response, expect_user_response=False):
+        """ Build the dialogflow response in the correct format"""
         dialogflow_response = DialogflowResponse()
         dialogflow_response.expect_user_response = expect_user_response
         dialogflow_response.add(SimpleResponse(response, response))
         return dialogflow_response.get_final_response()
 
     def query_bus_stop(self, stop_number):
+        """ Build full query string to send to RTPI site"""
         return self.send_request(self.get_rtpi_site() + '?stopRef=' + str(stop_number))
 
     @staticmethod
@@ -125,8 +134,9 @@ class BusStopResponse():
 
     single_bus_message = ['One bus is coming.', 'There is one bus coming  ']
 
-    many_buses_message = ['There buses are coming ', 'The following buses are coming  ',
-                          'These are the buses coming to this stop ']
+    many_buses_message = [' These buses are coming soon: ', ' The following buses are coming:  ',
+                          ' These are the buses coming to your bus stop: ']
+    goodbye_message = [' ', ' Goodbye!', ' Have a nice day!', ' Have a great day!', ' Adios!']
 
     def __init__(self, bus_response):
 
@@ -138,17 +148,27 @@ class BusStopResponse():
 
     @classmethod
     def get_greeting_with_question(cls):
+        """ To be sent as an initial greeting when app is launch with parameters"""
         return random.choice(cls.greetings)
 
     @classmethod
     def get_error_message(cls):
+        """ To be sent if something went wrong"""
         return random.choice(cls.error_messages)
+
     @classmethod
     def get_single_bus_message_initial_greeting(cls):
+        """ initial greeting to a single bus prior to replying"""
         return random.choice(cls.single_bus_message)
 
     @classmethod
+    def get_goodbye_message(cls):
+        """ message to be appended to a final positive response"""
+        return random.choice(cls.goodbye_message)
+
+    @classmethod
     def get_many_buses_initial_greeting(cls):
+        """ initial greeting for multiple buses prior to replying"""
         return random.choice(cls.many_buses_message)
 
     def set_message(self):
@@ -164,8 +184,10 @@ class BusStopResponse():
         if self.availability == Availability.MANY_BUSES or self.availability == Availability.ONE_BUS:
             bus_details_message = ', '.join(self.get_incoming_buses_detailed_message(self.bus_response))
             self.response_message = self.response_message + bus_details_message
+            self.response_message = self.get_goodbye_message()
 
     def set_availability(self):
+        """ Set the type of bus availability based on response from RTPI """
         try:
             if self.bus_response.Service.size > 1:
                 self.availability = Availability.MANY_BUSES
@@ -209,13 +231,9 @@ class BusStopResponse():
             return message
 
         resp = bus_response
-        service_time_message = [prepare_message((service, time)) for service, time in zip(resp['Service'], resp['Time'])]
+        service_time_message = [prepare_message((service, time))
+                                for service, time in zip(resp['Service'], resp['Time'])]
         return service_time_message
 
 
-def add_api_endpoints(endpoint):
-    """ Add the available endpoints for this API"""
-    bus_app.add_route(endpoint, BusStopRequest())
-
-
-add_api_endpoints(bus_stop_route)
+BUS_APP.add_route(BUS_APP, BusStopRequest())
