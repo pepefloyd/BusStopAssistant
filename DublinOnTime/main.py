@@ -61,9 +61,10 @@ class BusStopRequest():
                 LOGGER.info("Resolved bus stop: {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
-                api_response = BusStopResponse(bus_times_response_state).response_message
-                LOGGER.info('setting response to {}'.format(api_response))
-                resp.body = self.create_dialogflow_response(api_response)
+                good_response = BusStopResponse(bus_times_response_state).response_message
+                final_response = good_response + BusStopResponse.get_goodbye_message()
+                LOGGER.info('setting response to {}'.format(final_response))
+                resp.body = self.create_dialogflow_response(final_response)
                 resp.content_type = MEDIA_JSON
                 resp.status = HTTP_200
             elif dlg_flow_req.get_action() == 'call_busstop_api':
@@ -136,7 +137,7 @@ class BusStopResponse():
 
     many_buses_message = [' These buses are coming soon: ', ' The following buses are coming:  ',
                           ' These are the buses coming to your bus stop: ']
-    goodbye_message = [' ', ' Goodbye!', ' Have a nice day!', ' Have a great day!', ' Adios!']
+    goodbye_message = [' ', '  Goodbye!', ' Have a nice day!', ' Have a great day!', '  Adios!']
 
     def __init__(self, bus_response):
 
@@ -184,7 +185,6 @@ class BusStopResponse():
         if self.availability == Availability.MANY_BUSES or self.availability == Availability.ONE_BUS:
             bus_details_message = ', '.join(self.get_incoming_buses_detailed_message(self.bus_response))
             self.response_message = self.response_message + bus_details_message
-            self.response_message = self.get_goodbye_message()
 
     def set_availability(self):
         """ Set the type of bus availability based on response from RTPI """
