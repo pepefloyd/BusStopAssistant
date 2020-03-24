@@ -1,7 +1,7 @@
-""" Allows Google Assistant users to ask the assistant when is their bus coming to a particular bus stop.
+""" Allows people in Dublin to ask the Google assistant when their bus is coming to a particular bus stop.
 
-This module provides a web service using the falcon framework which receives  and responds to requests from
-Google's Dialogflow. The actual information is obtained by doing good old scrappin' of the RTPI.ie site
+This module provides a web service using the falcon framework which receives and responds to requests from
+Google's Dialogflow. The actual information is obtained by doing some good old scrapin' of the RTPI.ie site
 
 Ireland, March 2020.
 """
@@ -236,4 +236,4 @@ class BusStopResponse():
         return service_time_message
 
 
-BUS_APP.add_route(BUS_APP, BusStopRequest())
+BUS_APP.add_route(BUS_STOP_ROUTE, BusStopRequest())
