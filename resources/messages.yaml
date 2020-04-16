@@ -1,0 +1,23 @@
+greetings:
+  - "Welcome to Dublin on time. Please tell me the stop number you would like me to check for you"
+  - "Hello!, please tell me the stop number you would like me to verify"
+  - "Hey there, please tell me the stop number you need me to check"
+  - "Hi, please tell me the stop number"
+errors:
+  - "Sorry, I could not find this information. Please try later."
+  - "It was not possible to get this information. Please try again later"
+single_bus:
+  - "One bus is coming. \n"
+  - "There is one bus coming \n"
+many_buses:
+  - "These buses are coming soon: \n"
+  - "The following buses are coming: \n"
+  - "These are the buses coming to your bus stop: \n"
+no_buses:
+  - "I could not find any buses arriving at this bus stop. \n"
+farewells:
+  - "\nHave a safe trip!"
+  - "\nGoodbye!"
+  - "\nHave a nice day!"
+  - "\nHave a great day!"
+  - "\nAdios!"
