@@ -13,7 +13,7 @@ def get_random_message(message_type):
 
 
 def convert_times(text):
-    pre_time_ssml = '<say-as interpret-as="time" format="24">'
+    pre_time_ssml = '<say-as interpret-as="time" format="hms12">'
     post_time_ssml = '</say-as>'
     regex = '(\d{1,2}[:]\d{1,2})'
     return re.sub(regex, lambda m: pre_time_ssml + m.group(0) + post_time_ssml, text)
@@ -21,7 +21,7 @@ def convert_times(text):
 
 def text_to_ssml(text):
     # Convert plaintext to SSML
-    # Add a 2 second pause for every newline
+    # Add a pause for every newline
     ssml = '<speak>{}</speak>'.format(text.replace('\n', '\n<break time="1s"/>'))
     ssml = convert_times(ssml)
     return ssml

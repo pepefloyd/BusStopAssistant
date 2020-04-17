@@ -12,9 +12,9 @@ import re
 from enum import Enum, IntEnum
 
 import messages as msgs
-from falcon import API, MEDIA_JSON, HTTP_200
 import pandas
 import requests
+from falcon import API, MEDIA_JSON, HTTP_200
 from pydialogflow_fulfillment import DialogflowResponse, DialogflowRequest, SimpleResponse
 
 LOGGER = logging.getLogger(__name__)
@@ -54,17 +54,12 @@ class BusStopRequest():
                 LOGGER.info("Resolved bus stop: {}".format(bus_stop))
                 query_response = self.query_bus_stop(bus_stop)
                 bus_times_response_state = self.deserialize_response(query_response)
-                response = BusStopResponse.from_api_response(bus_times_response_state)
-                response_message = response.response_message
-                final_response = response_message + msgs.get_goodbye_message()
-                LOGGER.info('Setting response to  \n {}'.format(final_response))
-                resp.body = response.create_google_response(final_response)
+                resp.body = BusStopResponse(bus_times_response_state).provide_good_response()
                 resp.content_type = MEDIA_JSON
                 resp.status = HTTP_200
             elif google_request.get_action() == 'call_busstop_api':
                 LOGGER.info('bus stop request did no contain valid stop parameter')
-                resp.body = BusStopResponse().create_google_response(
-                    msgs.get_greeting_with_question(), True)
+                resp.body = BusStopResponse().request_stop_response()
                 resp.content_type = MEDIA_JSON
                 resp.status = HTTP_200
             else:
@@ -72,7 +67,7 @@ class BusStopRequest():
         except Exception as error:
             LOGGER.error('There was an error processing this request')
             LOGGER.error(str(error))
-            resp.body = BusStopResponse().create_google_response(msgs.get_error_message())
+            resp.body = BusStopResponse().provide_error_response()
             resp.content_type = MEDIA_JSON
             resp.status = HTTP_200
 
@@ -85,6 +80,8 @@ class BusStopRequest():
         bus_stop = None
         stop_param = '' if 'stop' not in google_request.get_parameters() else \
             google_request.get_parameters().get('stop')
+        if not stop_param:
+            return None
         stop_param = stop_param.replace('/', '')  # convert 24/72 to 2472
         match_numbers = re.findall('\d+', stop_param)
         if google_request.get_action() == 'call_busstop_api' and stop_param and match_numbers:
@@ -96,7 +93,6 @@ class BusStopRequest():
         else:
             stop_param = match_numbers[0]  # This will grab the digits in the string
         stop_param = stop_param.replace(' ', '')  # ensure we don't have spaces
-
         bus_stop = int(stop_param.split('.', 1)[0])
         return bus_stop
 
@@ -137,9 +133,16 @@ class BusStopResponse():
         self.set_availability()
         self.set_message()
 
-    @classmethod
-    def from_api_response(cls, stop_request_response):
-        return cls(stop_request_response)
+    def request_stop_response(self):
+        return self.create_google_response(msgs.get_greeting_with_question(), True)
+
+    def provide_error_response(self):
+        return self.create_google_response(msgs.get_error_message() + msgs.get_goodbye_message())
+
+    def provide_good_response(self):
+        final_response = self.response_message + msgs.get_goodbye_message()
+        LOGGER.info('Setting response to  \n {}'.format(final_response))
+        return self.create_google_response(final_response)
 
     def create_google_response(self, message, expect_user_response=False):
         """ Build the dialogflow response in the correct format"""
