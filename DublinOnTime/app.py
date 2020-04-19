@@ -10,8 +10,7 @@ import json
 import logging
 import re
 from enum import Enum, IntEnum
-
-import messages as msgs
+from . import messages as msgs
 import pandas
 import requests
 from falcon import API, MEDIA_JSON, HTTP_200
@@ -77,10 +76,10 @@ class BusStopRequest():
 
     @staticmethod
     def get_bus_stop(google_request):
-        bus_stop = None
         stop_param = '' if 'stop' not in google_request.get_parameters() else \
-            google_request.get_parameters().get('stop')
-        if not stop_param:
+            str(google_request.get_parameters().get('stop'))
+        LOGGER.info('Extracted STOP parameter is:'.format(stop_param))
+        if stop_param is None or stop_param == '':
             return None
         stop_param = stop_param.replace('/', '')  # convert 24/72 to 2472
         match_numbers = re.findall('\d+', stop_param)

@@ -1,1 +1,0 @@
-web: gunicorn -b 0.0.0.0:$PORT main:BUS_SERVICE_API --log-level=DEBUG
