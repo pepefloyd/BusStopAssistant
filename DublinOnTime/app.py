@@ -81,7 +81,8 @@ class BusStopRequest():
         LOGGER.info('Extracted STOP parameter is:'.format(stop_param))
         if stop_param is None or stop_param == '':
             return None
-        stop_param = stop_param.replace('/', '')  # convert 24/72 to 2472
+        # convert 24/72 or 24-72 or 24:72 to 2472
+        stop_param = stop_param.replace('/', '').replace('-', '').replace(':', '')
         match_numbers = re.findall('\d+', stop_param)
         if google_request.get_action() == 'call_busstop_api' and stop_param and match_numbers:
             LOGGER.info('stop parameter is {}'.format(stop_param))

@@ -10,7 +10,7 @@ single_bus:
   - "One bus is coming. \n"
   - "There is one bus coming \n"
 many_buses:
-  - "These buses are coming soon: \n"
+  - "These buses are coming: \n"
   - "The following buses are coming: \n"
   - "These are the buses coming to your bus stop: \n"
 no_buses:
